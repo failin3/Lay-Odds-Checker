@@ -71,9 +71,10 @@ def getMarkets(list_of_market_ids, url, header):
                 try:
                     selectionId = runner["selectionId"]
                     available_to_lay = float((runner["ex"]["availableToLay"][0]["size"]))
+                    price = float(runner["ex"]["availableToLay"][0]["price"])
                 except IndexError:
                     available_to_lay = 0
-                size_list.append([available_to_lay, selectionId])
+                size_list.append([available_to_lay, selectionId, price])
             total_list.append([market_id, sorted(size_list, reverse=True)])
             counter += 1
         return total_list
@@ -87,7 +88,7 @@ def getBestMatches(date, application_key, session_key):
 
 
     #Get football events in date range
-    json_req = '[{{"jsonrpc": "2.0","method": "SportsAPING/v1.0/listEvents","params": {{"filter": {{"eventTypeIds": ["1"],"marketStartTime": {{"from": "{}T00:00:00Z","to": "{}T15:00:00Z"}}}}}},"id": 1}}]'.format(DATE_OF_MATCHES, DATE_OF_MATCHES)
+    json_req = '[{{"jsonrpc": "2.0","method": "SportsAPING/v1.0/listEvents","params": {{"filter": {{"eventTypeIds": ["1"],"marketStartTime": {{"from": "{}T00:00:00Z","to": "{}T23:59:00Z"}}}}}},"id": 1}}]'.format(DATE_OF_MATCHES, DATE_OF_MATCHES)
     response = requests.post(url, data=json_req, headers=header)
     games = response.json()
 
@@ -149,10 +150,11 @@ Label(wn, text="Date: {}".format(date)).place(x=0,y=10)
 
 for game in final_list:
     Label(wn, text=game[1]).place(x=0,y=30+(20*counter))
-    Label(wn, text="€" + str(round(game[0]))).place(x=40,y=30+(20*counter))
+    Label(wn, text=game[2]).place(x=30,y=30+(20*counter))
+    Label(wn, text="€" + str(round(game[0]))).place(x=60,y=30+(20*counter))
     labels.append(Label(wn, text="link", fg="blue", cursor="hand2"))
-    labels[counter].place(x=80,y=30+(20*counter))
-    url = "https://www.betfair.com/exchange/plus/football/market/" + game[2]
+    labels[counter].place(x=100,y=30+(20*counter))
+    url = "https://www.betfair.com/exchange/plus/football/market/" + game[3]
     labels[counter].bind("<Button-1>", makeLambda(url))    
     counter+=1
 wn.mainloop()
