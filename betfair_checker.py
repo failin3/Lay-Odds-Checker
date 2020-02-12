@@ -2,18 +2,35 @@ from urllib import request
 import json
 import requests
 from tkinter import*
+from threading import Thread
 import webbrowser
+import datetime
 
-DATE_OF_MATCHES = "2020-02-12"
+DATE_OF_MATCHES = "2020-02-13"
+DATE_OF_MATCHES = datetime.datetime.now().strftime("%Y-%m-%d")
+if datetime.datetime.now().hour >= 22:
+    DATE_OF_MATCHES = (datetime.datetime.now()+datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+print(DATE_OF_MATCHES)
 START_TIME = "00:00"
 END_TIME = "23:59"
+
+global runner_labels
+global price_labels
+global size_labels
+global name_labels
+global labels
+
+runner_labels = []
+price_labels = []
+size_labels = []
+labels = []
+name_labels = []
 
 def getApiCredentials():
     with open("credentials.txt") as f:
         application_key = f.readline().strip()
         session_key = f.readline().strip()
         return application_key, session_key
-
 
 def runnerIdToTitle(runner_id_list):
     for game in runner_id_list:
@@ -87,7 +104,7 @@ def getBestMatches(date, application_key, session_key):
     
     list_of_games = []
     list_of_market_ids = []
-
+    list_of_names = []
 
     #Get football events in date range
     json_req = '[{{"jsonrpc": "2.0","method": "SportsAPING/v1.0/listEvents","params": {{"filter": {{"eventTypeIds": ["1"],"marketStartTime": {{"from": "{}T{}:00Z","to": "{}T{}:00Z"}}}}}},"id": 1}}]'.format(date[0], date[1], date[0], date[2])
@@ -95,17 +112,17 @@ def getBestMatches(date, application_key, session_key):
     games = response.json()
 
     for event in games[0]["result"]:
-    #    print('{} - {}'.format(event["event"]["name"], event["event"]["id"]))
+        #event_title = event["event"]["name"]
         list_of_games.append(event["event"]["id"])
 
 
     #Get correct score market ID for each game
     css = '"' + '","'.join(list_of_games) + '"'
-    json_req = '[{{"jsonrpc":"2.0","method":"SportsAPING/v1.0/listMarketCatalogue","params":{{"filter":{{"textQuery":"CORRECT_SCORE","eventIds":[{}]}},"maxResults":"200"}},"id":1}}]'.format(css)
+    json_req = '[{{"jsonrpc":"2.0","method":"SportsAPING/v1.0/listMarketCatalogue","params":{{"filter":{{"textQuery":"CORRECT_SCORE","eventIds":[{}]}},"marketProjection": ["EVENT"],"maxResults":"200"}},"id":1}}]'.format(css)
     response = requests.post(url, data=json_req, headers=header).json()
-
     for event in response[0]["result"]:
         list_of_market_ids.append(event["marketId"])
+        list_of_names.append(event["event"]["name"])
 
     if len(list_of_market_ids) > 40:
         total_list = []
@@ -119,8 +136,9 @@ def getBestMatches(date, application_key, session_key):
 
     #Find heighest per game
     final_list = []
-    for game in total_list:
+    for game, name in zip(total_list, list_of_names):
         game[1][0].append(game[0])
+        game[1][0].append(name)
         final_list.append(game[1][0])
     final_list = sorted(final_list, reverse=True)
     final_list = runnerIdToTitle(final_list)
@@ -141,35 +159,40 @@ def fixDate(date):
     day = date[8:]
     return "{}/{}/{}".format(day, month, year)
 
-def updateInfo(runner_labels, price_labels, size_labels, labels, date):
+def updateInfo(runner_labels, price_labels, size_labels, labels, name_labels, date):
     #Destroy old labels
-    for runner, price, size, label in zip(runner_labels, price_labels, size_labels, labels):
+    for runner, price, size, label, name in zip(runner_labels, price_labels, size_labels, labels, name_labels):
         runner.destroy()
         price.destroy()
         size.destroy()
         label.destroy()
+        name.destroy()
     final_list = getBestMatches(date, application_key, session_key)
-    labels = []
+    updateUI(final_list)
+
+def updateUI(final_list):
     counter = 0
     runner_labels = []
     price_labels = []
     size_labels = []
-
+    labels = []
+    name_labels = []
     starting_height = 0
     for game in final_list:
+        name_labels.append(Label(wn, text=game[4]))
+        name_labels[counter].place(x=0,y=starting_height+(45*counter))
         runner_labels.append(Label(wn, text=game[1]))
-        runner_labels[counter].place(x=0,y=starting_height+(20*counter))
+        runner_labels[counter].place(x=0,y=starting_height+20+(45*counter))
         price_labels.append(Label(wn, text=game[2]))
-        price_labels[counter].place(x=30,y=starting_height+(20*counter))
+        price_labels[counter].place(x=30,y=starting_height+20+(45*counter))
         size_labels.append(Label(wn, text="€" + str(round(game[0]))))
-        size_labels[counter].place(x=60,y=starting_height+(20*counter))
+        size_labels[counter].place(x=60,y=starting_height+20+(45*counter))
         labels.append(Label(wn, text="link", fg="blue", cursor="hand2"))
-        labels[counter].place(x=100,y=starting_height+(20*counter))
+        labels[counter].place(x=100,y=starting_height+20+(45*counter))
         url = "https://www.betfair.com/exchange/plus/football/market/" + game[3]
         labels[counter].bind("<Button-1>", makeLambda(url))    
         counter+=1
     
-
 wn=Tk()
 wn.geometry("300x300")
 
@@ -183,27 +206,10 @@ time_entry = Entry(wn, width=5)
 time_entry.insert(0, END_TIME)
 time_entry.place(x=210, y=30)
 
-update = Button(wn, text="Update", command=lambda: updateInfo(runner_labels, price_labels, size_labels, labels, [date_entry.get(), START_TIME, time_entry.get()]))
+update = Button(wn, text="Update", command=lambda: updateInfo(runner_labels, price_labels, size_labels, labels, name_labels, [date_entry.get(), START_TIME, time_entry.get()]))
 update.place(x=200, y=60)
 
-labels = []
-counter = 0
-runner_labels = []
-price_labels = []
-size_labels = []
+updateUI(final_list)
 
-starting_height = 0
-for game in final_list:
-    runner_labels.append(Label(wn, text=game[1]))
-    runner_labels[counter].place(x=0,y=starting_height+(20*counter))
-    price_labels.append(Label(wn, text=game[2]))
-    price_labels[counter].place(x=30,y=starting_height+(20*counter))
-    size_labels.append(Label(wn, text="€" + str(round(game[0]))))
-    size_labels[counter].place(x=60,y=starting_height+(20*counter))
-    labels.append(Label(wn, text="link", fg="blue", cursor="hand2"))
-    labels[counter].place(x=100,y=starting_height+(20*counter))
-    url = "https://www.betfair.com/exchange/plus/football/market/" + game[3]
-    labels[counter].bind("<Button-1>", makeLambda(url))    
-    counter+=1
 wn.mainloop()
 
