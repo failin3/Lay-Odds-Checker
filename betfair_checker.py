@@ -5,6 +5,8 @@ from tkinter import*
 import webbrowser
 
 DATE_OF_MATCHES = "2020-02-12"
+START_TIME = "00:00"
+END_TIME = "23:59"
 
 def getApiCredentials():
     with open("credentials.txt") as f:
@@ -88,7 +90,7 @@ def getBestMatches(date, application_key, session_key):
 
 
     #Get football events in date range
-    json_req = '[{{"jsonrpc": "2.0","method": "SportsAPING/v1.0/listEvents","params": {{"filter": {{"eventTypeIds": ["1"],"marketStartTime": {{"from": "{}T00:00:00Z","to": "{}T23:59:00Z"}}}}}},"id": 1}}]'.format(DATE_OF_MATCHES, DATE_OF_MATCHES)
+    json_req = '[{{"jsonrpc": "2.0","method": "SportsAPING/v1.0/listEvents","params": {{"filter": {{"eventTypeIds": ["1"],"marketStartTime": {{"from": "{}T{}:00Z","to": "{}T{}:00Z"}}}}}},"id": 1}}]'.format(date[0], date[1], date[0], date[2])
     response = requests.post(url, data=json_req, headers=header)
     games = response.json()
 
@@ -126,7 +128,7 @@ def getBestMatches(date, application_key, session_key):
 
 application_key, session_key = getApiCredentials()
 
-final_list = getBestMatches(DATE_OF_MATCHES, application_key, session_key)
+final_list = getBestMatches([DATE_OF_MATCHES, START_TIME, END_TIME], application_key, session_key)
 
 #Create GUI
 
@@ -140,20 +142,35 @@ def fixDate(date):
     return "{}/{}/{}".format(day, month, year)
 
 wn=Tk()
-wn.geometry("200x200")
+wn.geometry("300x300")
 
 labels = []
 counter = 0
 
-date = fixDate(DATE_OF_MATCHES)
-Label(wn, text="Date: {}".format(date)).place(x=0,y=10)
+Label(wn, text="Date: ").place(x=150, y=0)
+date_entry = Entry(wn, width=10)
+date_entry.insert(0, DATE_OF_MATCHES)
+date_entry.place(x=210,y=0)
 
+Label(wn, text="End time: ").place(x=150, y=30)
+time_entry = Entry(wn, width=5)
+time_entry.insert(0, END_TIME)
+time_entry.place(x=210, y=30)
+
+update = Button(wn, text="Update")
+update.place(x=200, y=60)
+
+date = fixDate(DATE_OF_MATCHES)
+Label(wn, text="Date: {}".format(date)).place(x=0,y=0)
+
+
+starting_height = 20
 for game in final_list:
-    Label(wn, text=game[1]).place(x=0,y=30+(20*counter))
-    Label(wn, text=game[2]).place(x=30,y=30+(20*counter))
-    Label(wn, text="€" + str(round(game[0]))).place(x=60,y=30+(20*counter))
+    Label(wn, text=game[1]).place(x=0,y=starting_height+(20*counter))
+    Label(wn, text=game[2]).place(x=30,y=starting_height+(20*counter))
+    Label(wn, text="€" + str(round(game[0]))).place(x=60,y=starting_height+(20*counter))
     labels.append(Label(wn, text="link", fg="blue", cursor="hand2"))
-    labels[counter].place(x=100,y=30+(20*counter))
+    labels[counter].place(x=100,y=starting_height+(20*counter))
     url = "https://www.betfair.com/exchange/plus/football/market/" + game[3]
     labels[counter].bind("<Button-1>", makeLambda(url))    
     counter+=1
