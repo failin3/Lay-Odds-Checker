@@ -141,11 +141,37 @@ def fixDate(date):
     day = date[8:]
     return "{}/{}/{}".format(day, month, year)
 
+def updateInfo(runner_labels, price_labels, size_labels, labels, date):
+    #Destroy old labels
+    for runner, price, size, label in zip(runner_labels, price_labels, size_labels, labels):
+        runner.destroy()
+        price.destroy()
+        size.destroy()
+        label.destroy()
+    final_list = getBestMatches(date, application_key, session_key)
+    labels = []
+    counter = 0
+    runner_labels = []
+    price_labels = []
+    size_labels = []
+
+    starting_height = 0
+    for game in final_list:
+        runner_labels.append(Label(wn, text=game[1]))
+        runner_labels[counter].place(x=0,y=starting_height+(20*counter))
+        price_labels.append(Label(wn, text=game[2]))
+        price_labels[counter].place(x=30,y=starting_height+(20*counter))
+        size_labels.append(Label(wn, text="€" + str(round(game[0]))))
+        size_labels[counter].place(x=60,y=starting_height+(20*counter))
+        labels.append(Label(wn, text="link", fg="blue", cursor="hand2"))
+        labels[counter].place(x=100,y=starting_height+(20*counter))
+        url = "https://www.betfair.com/exchange/plus/football/market/" + game[3]
+        labels[counter].bind("<Button-1>", makeLambda(url))    
+        counter+=1
+    
+
 wn=Tk()
 wn.geometry("300x300")
-
-labels = []
-counter = 0
 
 Label(wn, text="Date: ").place(x=150, y=0)
 date_entry = Entry(wn, width=10)
@@ -157,18 +183,23 @@ time_entry = Entry(wn, width=5)
 time_entry.insert(0, END_TIME)
 time_entry.place(x=210, y=30)
 
-update = Button(wn, text="Update")
+update = Button(wn, text="Update", command=lambda: updateInfo(runner_labels, price_labels, size_labels, labels, [date_entry.get(), START_TIME, time_entry.get()]))
 update.place(x=200, y=60)
 
-date = fixDate(DATE_OF_MATCHES)
-Label(wn, text="Date: {}".format(date)).place(x=0,y=0)
+labels = []
+counter = 0
+runner_labels = []
+price_labels = []
+size_labels = []
 
-
-starting_height = 20
+starting_height = 0
 for game in final_list:
-    Label(wn, text=game[1]).place(x=0,y=starting_height+(20*counter))
-    Label(wn, text=game[2]).place(x=30,y=starting_height+(20*counter))
-    Label(wn, text="€" + str(round(game[0]))).place(x=60,y=starting_height+(20*counter))
+    runner_labels.append(Label(wn, text=game[1]))
+    runner_labels[counter].place(x=0,y=starting_height+(20*counter))
+    price_labels.append(Label(wn, text=game[2]))
+    price_labels[counter].place(x=30,y=starting_height+(20*counter))
+    size_labels.append(Label(wn, text="€" + str(round(game[0]))))
+    size_labels[counter].place(x=60,y=starting_height+(20*counter))
     labels.append(Label(wn, text="link", fg="blue", cursor="hand2"))
     labels[counter].place(x=100,y=starting_height+(20*counter))
     url = "https://www.betfair.com/exchange/plus/football/market/" + game[3]
